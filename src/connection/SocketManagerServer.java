@@ -5,61 +5,70 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 
 import control.Main;
 
 
-public class SocketManager  extends Thread {
+public class SocketManagerServer  extends Thread {
 
 
 	private final BlockingQueue<String> queue;
-	private final String hostIP;
+	//private final String hostIP;
 	private Socket socket = null;
+	private ServerSocket socketserver = null;
 	private final int port;
-	private Output appOutput;	//the class is here, in the RobotSocketManager class, look there to understand
-	private Input appInput;		//the class is here, in the RobotSocketManager class, look there to understand
+	private Output appOutput;
+	private Input appInput;
 	public boolean connected = false;	// leting know if the connection is active
 	private BufferedReader in;
 	private BufferedWriter out;
+	
+	public static boolean stopRequested = false;
 
-	public SocketManager(BlockingQueue<String> queue, String hostIP, int port) {
+	public SocketManagerServer(BlockingQueue<String> queue, int port) {
 		this.queue = queue;
-		this.hostIP = hostIP;
 		this.port = port;
 	}
 
 @Override
 	public void run() {
 
-		try {
-			socket = new Socket();
-			socket.connect(new InetSocketAddress(hostIP, port), 5000);
-
-            in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
-			appInput = new Input(in);
-			appInput.start();
-
-			out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-			appOutput = new Output(queue,out);
-			appOutput.start();
-
-
-			appInput.join();
-			appOutput.join();
-
-
-		} catch (Exception e ) { //| InterruptedException
-			e.printStackTrace();
-		} finally {
+		while(!stopRequested){
 			try {
-				if (socket != null)
-					socket.close();
-					connected = false;
-			} catch (Exception e) {
+				socket = new Socket();
+				socketserver = new ServerSocket(port);
+				socket = socketserver.accept();
+				
+				System.out.println("someone connected");
+	
+	            in = new BufferedReader (new InputStreamReader (socket.getInputStream()));
+				appInput = new Input(in);
+				appInput.start();
+	
+				out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+				appOutput = new Output(queue,out);
+				appOutput.start();
+	
+	
+				appInput.join();
+				appOutput.join();
+	
+	
+			} catch (Exception e ) { //| InterruptedException
 				e.printStackTrace();
+			} finally {
+				try {
+					if (socket != null)
+						socket.close();
+						connected = false;
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
+		
 		}
 
 	}
@@ -74,7 +83,7 @@ public class SocketManager  extends Thread {
 			this.output = output;
 		}
 
-		boolean stopRequested = false;
+		//boolean stopRequested = false;
 		@Override
 		public void run() {
 			while (!stopRequested) {
@@ -106,7 +115,7 @@ public class SocketManager  extends Thread {
 			this.input = inputstream;
 		}
 
-		boolean stopRequested = false;
+		//boolean stopRequested = false;
 
 		@Override
 		public void run() {
